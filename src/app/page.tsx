@@ -39,9 +39,13 @@ export default function Home() {
     // Verificar se usuário está logado (verifica cookie)
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/auth/me');
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+          cache: 'no-store'
+        });
         setIsLoggedIn(response.ok);
-      } catch {
+      } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
         setIsLoggedIn(false);
       }
     };
@@ -50,7 +54,10 @@ export default function Home() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', { 
+        method: 'POST',
+        credentials: 'include'
+      });
       setIsLoggedIn(false);
       router.refresh();
     } catch (error) {

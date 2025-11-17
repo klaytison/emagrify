@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hashPassword } from '@/lib/password';
-
-// Simulação de banco de dados em memória (substituir por banco real)
-const users: any[] = [];
+import { users } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {

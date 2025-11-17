@@ -1,13 +1,28 @@
-import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 export async function hashPassword(password: string): Promise<string> {
-  const salt = await bcrypt.genSalt(10);
-  return bcrypt.hash(password, salt);
+  // Gera um salt aleatório
+  const salt = crypto.randomBytes(16).toString('hex');
+  
+  // Cria o hash usando pbkdf2
+  return new Promise((resolve, reject) => {
+    crypto.pbkdf2(password, salt, 10000, 64, 'sha512', (err, derivedKey) => {
+      if (err) reject(err);
+      resolve(salt + ':' + derivedKey.toString('hex'));
+    });
+  });
 }
 
 export async function verifyPassword(
   password: string,
   hashedPassword: string
 ): Promise<boolean> {
-  return bcrypt.compare(password, hashedPassword);
+  const [salt, hash] = hashedPassword.split(':');
+  
+  return new Promise((resolve, reject) => {
+    crypto.pbkdf2(password, salt, 10000, 64, 'sha512', (err, derivedKey) => {
+      if (err) reject(err);
+      resolve(hash === derivedKey.toString('hex'));
+    });
+  });
 }

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPassword } from '@/lib/password';
 import { createToken, setAuthCookie } from '@/lib/auth';
-
-// Simulação de banco de dados em memória (substituir por banco real)
-// Este array será compartilhado com o registro
-const users: any[] = [];
+import { users } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {

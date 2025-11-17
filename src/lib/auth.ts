@@ -3,9 +3,9 @@ import { cookies } from 'next/headers';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-production';
 
 // Função simples para criar um token (sem criptografia complexa para desenvolvimento)
-export async function createToken(userId: string): Promise<string> {
+export async function createToken(userData: any): Promise<string> {
   const payload = {
-    userId,
+    ...userData,
     exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 dias
   };
   
@@ -14,7 +14,7 @@ export async function createToken(userId: string): Promise<string> {
 }
 
 // Função simples para verificar token
-export async function verifyToken(token: string): Promise<{ userId: string } | null> {
+export async function verifyToken(token: string): Promise<any | null> {
   try {
     const payload = JSON.parse(Buffer.from(token, 'base64').toString());
     
@@ -22,10 +22,22 @@ export async function verifyToken(token: string): Promise<{ userId: string } | n
       return null; // Token expirado
     }
     
-    return { userId: payload.userId };
+    return payload;
   } catch {
     return null;
   }
+}
+
+// Função para definir cookie de autenticação
+export async function setAuthCookie(token: string) {
+  const cookieStore = await cookies();
+  
+  cookieStore.set('auth-token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 // 7 dias
+  });
 }
 
 // Função para obter o usuário atual
@@ -47,17 +59,10 @@ export async function getCurrentUser() {
 }
 
 // Função para fazer login
-export async function login(userId: string) {
+export async function login(userData: any) {
   try {
-    const token = await createToken(userId);
-    const cookieStore = await cookies();
-    
-    cookieStore.set('auth-token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 // 7 dias
-    });
+    const token = await createToken(userData);
+    await setAuthCookie(token);
     
     return { success: true };
   } catch (error) {
