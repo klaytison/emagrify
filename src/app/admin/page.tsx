@@ -8,6 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Users,
   DollarSign,
   TrendingUp,
@@ -17,12 +25,27 @@ import {
   CheckCircle2,
   XCircle,
   Gift,
+  Ban,
+  RefreshCw,
+  Trash2,
+  Edit,
 } from 'lucide-react';
 import Link from 'next/link';
+
+interface Subscription {
+  id: string;
+  email: string;
+  name: string;
+  status: 'active' | 'expired' | 'cancelled';
+  startDate: string;
+  amount: number;
+}
 
 export default function AdminPage() {
   const [searchEmail, setSearchEmail] = useState('');
   const [giftEmail, setGiftEmail] = useState('');
+  const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
+  const [showManageDialog, setShowManageDialog] = useState(false);
 
   const stats = {
     totalRevenue: 47500,
@@ -31,7 +54,7 @@ export default function AdminPage() {
     newThisMonth: 52,
   };
 
-  const recentSubscriptions = [
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([
     {
       id: '1',
       email: 'maria@email.com',
@@ -56,11 +79,54 @@ export default function AdminPage() {
       startDate: '10/12/2023',
       amount: 95,
     },
-  ];
+  ]);
 
   const handleGiftSubscription = () => {
     alert(`Assinatura concedida para: ${giftEmail}`);
     setGiftEmail('');
+  };
+
+  const handleManageClick = (subscription: Subscription) => {
+    setSelectedSubscription(subscription);
+    setShowManageDialog(true);
+  };
+
+  const handleCancelSubscription = () => {
+    if (selectedSubscription) {
+      setSubscriptions(subscriptions.map(sub => 
+        sub.id === selectedSubscription.id 
+          ? { ...sub, status: 'cancelled' as const }
+          : sub
+      ));
+      alert(`Assinatura de ${selectedSubscription.name} cancelada com sucesso!`);
+      setShowManageDialog(false);
+    }
+  };
+
+  const handleRenewSubscription = () => {
+    if (selectedSubscription) {
+      setSubscriptions(subscriptions.map(sub => 
+        sub.id === selectedSubscription.id 
+          ? { ...sub, status: 'active' as const }
+          : sub
+      ));
+      alert(`Assinatura de ${selectedSubscription.name} renovada com sucesso!`);
+      setShowManageDialog(false);
+    }
+  };
+
+  const handleDeleteSubscription = () => {
+    if (selectedSubscription && confirm(`Tem certeza que deseja DELETAR permanentemente a assinatura de ${selectedSubscription.name}? Esta ação não pode ser desfeita.`)) {
+      setSubscriptions(subscriptions.filter(sub => sub.id !== selectedSubscription.id));
+      alert(`Assinatura de ${selectedSubscription.name} deletada permanentemente!`);
+      setShowManageDialog(false);
+    }
+  };
+
+  const handleSendEmail = () => {
+    if (selectedSubscription) {
+      alert(`E-mail enviado para ${selectedSubscription.email}`);
+    }
   };
 
   return (
@@ -187,7 +253,7 @@ export default function AdminPage() {
                   </div>
 
                   <div className="space-y-3">
-                    {recentSubscriptions.map((sub) => (
+                    {subscriptions.map((sub) => (
                       <div
                         key={sub.id}
                         className="flex items-center justify-between p-4 bg-white rounded-lg border-2 border-gray-200"
@@ -220,6 +286,11 @@ export default function AdminPage() {
                               <CheckCircle2 className="w-3 h-3" />
                               Ativa
                             </Badge>
+                          ) : sub.status === 'cancelled' ? (
+                            <Badge className="bg-red-500 text-white flex items-center gap-1">
+                              <Ban className="w-3 h-3" />
+                              Cancelada
+                            </Badge>
                           ) : (
                             <Badge className="bg-gray-400 text-white flex items-center gap-1">
                               <XCircle className="w-3 h-3" />
@@ -227,7 +298,11 @@ export default function AdminPage() {
                             </Badge>
                           )}
 
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleManageClick(sub)}
+                          >
                             Gerenciar
                           </Button>
                         </div>
@@ -347,6 +422,96 @@ export default function AdminPage() {
           </Tabs>
         </div>
       </main>
+
+      {/* Manage Subscription Dialog */}
+      <Dialog open={showManageDialog} onOpenChange={setShowManageDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-[#2A2A2A]">
+              Gerenciar Assinatura
+            </DialogTitle>
+            <DialogDescription>
+              {selectedSubscription && (
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#7BE4B7] to-[#6ECBF5] flex items-center justify-center text-white font-bold text-lg">
+                      {selectedSubscription.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-[#2A2A2A]">{selectedSubscription.name}</div>
+                      <div className="text-sm text-gray-600">{selectedSubscription.email}</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <div className="text-xs text-gray-600">Status</div>
+                      <div className="font-medium text-[#2A2A2A] capitalize">{selectedSubscription.status}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-600">Início</div>
+                      <div className="font-medium text-[#2A2A2A]">{selectedSubscription.startDate}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-600">Valor</div>
+                      <div className="font-medium text-[#2A2A2A]">R$ {selectedSubscription.amount}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-600">ID</div>
+                      <div className="font-medium text-[#2A2A2A]">#{selectedSubscription.id}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-3 py-4">
+            <Button 
+              className="w-full justify-start bg-[#7BE4B7] text-white hover:bg-[#7BE4B7]/90"
+              onClick={handleRenewSubscription}
+            >
+              <RefreshCw className="mr-2 w-4 h-4" />
+              Renovar Assinatura
+            </Button>
+
+            <Button 
+              className="w-full justify-start bg-[#6ECBF5] text-white hover:bg-[#6ECBF5]/90"
+              onClick={handleSendEmail}
+            >
+              <Mail className="mr-2 w-4 h-4" />
+              Enviar E-mail
+            </Button>
+
+            <Button 
+              variant="outline"
+              className="w-full justify-start border-[#FF7A00] text-[#FF7A00] hover:bg-[#FF7A00]/10"
+              onClick={handleCancelSubscription}
+            >
+              <Ban className="mr-2 w-4 h-4" />
+              Cancelar Assinatura
+            </Button>
+
+            <Button 
+              variant="outline"
+              className="w-full justify-start border-red-500 text-red-500 hover:bg-red-50"
+              onClick={handleDeleteSubscription}
+            >
+              <Trash2 className="mr-2 w-4 h-4" />
+              Deletar Permanentemente
+            </Button>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="ghost" 
+              onClick={() => setShowManageDialog(false)}
+              className="w-full"
+            >
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
