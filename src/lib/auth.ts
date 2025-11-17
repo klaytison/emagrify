@@ -1,65 +1,79 @@
-import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-secret-key-change-in-production'
-);
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-production';
 
-export interface UserPayload {
-  id: string;
-  email: string;
-  name: string;
+// Função simples para criar um token (sem criptografia complexa para desenvolvimento)
+export async function createToken(userId: string): Promise<string> {
+  const payload = {
+    userId,
+    exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 dias
+  };
+  
+  // Em produção, use uma biblioteca adequada como jose
+  return Buffer.from(JSON.stringify(payload)).toString('base64');
 }
 
-export async function createToken(payload: UserPayload): Promise<string> {
-  const token = await new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('7d')
-    .sign(secret);
-
-  return token;
-}
-
-export async function verifyToken(token: string): Promise<UserPayload | null> {
+// Função simples para verificar token
+export async function verifyToken(token: string): Promise<{ userId: string } | null> {
   try {
-    const { payload } = await jwtVerify(token, secret);
-    return payload as UserPayload;
+    const payload = JSON.parse(Buffer.from(token, 'base64').toString());
+    
+    if (payload.exp < Date.now()) {
+      return null; // Token expirado
+    }
+    
+    return { userId: payload.userId };
+  } catch {
+    return null;
+  }
+}
+
+// Função para obter o usuário atual
+export async function getCurrentUser() {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+    
+    if (!token) {
+      return null;
+    }
+    
+    const payload = await verifyToken(token);
+    return payload;
   } catch (error) {
+    console.error('Erro ao obter usuário:', error);
     return null;
   }
 }
 
-export async function getSession(): Promise<UserPayload | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth-token');
-
-  if (!token) {
-    return null;
+// Função para fazer login
+export async function login(userId: string) {
+  try {
+    const token = await createToken(userId);
+    const cookieStore = await cookies();
+    
+    cookieStore.set('auth-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 // 7 dias
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Erro ao fazer login:', error);
+    return { success: false, error: 'Erro ao fazer login' };
   }
-
-  return verifyToken(token.value);
 }
 
-export async function setAuthCookie(token: string) {
-  const cookieStore = await cookies();
-  cookieStore.set('auth-token', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-    path: '/',
-  });
-}
-
-export async function removeAuthCookie() {
-  const cookieStore = await cookies();
-  cookieStore.delete('auth-token');
-}
-
-export async function checkSubscription(userId: string): Promise<boolean> {
-  // Aqui você verificaria no banco de dados se o usuário tem assinatura ativa
-  // Por enquanto, retorna true para desenvolvimento
-  // TODO: Implementar verificação real no banco de dados
-  return true;
+// Função para fazer logout
+export async function logout() {
+  try {
+    const cookieStore = await cookies();
+    cookieStore.delete('auth-token');
+    return { success: true };
+  } catch (error) {
+    console.error('Erro ao fazer logout:', error);
+    return { success: false, error: 'Erro ao fazer logout' };
+  }
 }

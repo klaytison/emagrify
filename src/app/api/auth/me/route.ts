@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function GET() {
   try {
-    const user = await getSession();
+    const user = await getCurrentUser();
     
     if (!user) {
       return NextResponse.json(
